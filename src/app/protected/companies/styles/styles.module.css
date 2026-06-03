@@ -1,0 +1,47 @@
+.companies {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+.companies .header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.companies .companyCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.companies .companyCell .logoContainer {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 0.1rem solid #efefef;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+.companies .companyCell .logoContainer img {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: contain;
+     object-fit: contain;
+}
+.companies .companyCell .initials {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  border: 0.1rem solid #efefef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #000000;
+}
+.companies .companyCell span {
+  font-weight: 500;
+}/*# sourceMappingURL=styles.module.css.map */
