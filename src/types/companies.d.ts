@@ -61,3 +61,8 @@ interface Link {
   page?: number;
   active: boolean;
 }
+
+interface MergeSelectOption {
+  label: string;
+  value: string;
+}
