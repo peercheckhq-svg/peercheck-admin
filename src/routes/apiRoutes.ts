@@ -17,7 +17,8 @@ export const BACKEND_ROUTES = {
   DASHBOARD_RECENT_ACTIVITY: "/admin/logs/recent",
   DASHBOARD_ACTIVITY_TYPES: "/settings/activity-types",
   LOGOUT_ADMIN: "/admin/auth/logout",
-  SAMPLE_COMPANIES: "/admin/companies",
+  COMPANIES: "/admin/companies",
+  MERGE_COMPANIES: (sourceId: string) => `/admin/companies/${sourceId}/merge`,
   UPDATE_SETTINGS: "/admin/api/settings/update",
 } as const;
 
@@ -41,6 +42,9 @@ export const API_ROUTES = {
   ANALYTICS_EMERGENCY_CONCERN_SIGNALS:
     "/api/analytics/company-insights/concern-signals",
   LOGOUT_ADMIN: "/api/logout",
+  COMPANIES: (queryParams: Record<string, string>) =>
+    `/api/companies?${new URLSearchParams(queryParams).toString()}`,
+  MERGE_COMPANIES: (sourceId: string) => `/api/companies/${sourceId}/merge`,
   SAMPLE_COMPANIES: "/api/companies",
   UPDATE_SETTINGS: "/api/settings/update",
 } as const;

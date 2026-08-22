@@ -2,6 +2,7 @@ interface SearchInputProps {
   placeholder?: string;
   onChange?: (value: string) => void;
   shrink?: boolean;
+  overrideStyles?: React.CSSProperties;
 }
 
 interface DropdownOption {
@@ -26,6 +27,50 @@ interface DropdownInputProps {
     | "bottom-left"
     | "bottom-right"
     | "bottom-center";
+}
+
+interface SearchableSelectOption {
+  label: string;
+  value: string | number;
+  icon?: React.ReactNode;
+  searchText?: string;
+  disabled?: boolean;
+}
+
+interface SearchableSelectProps {
+  label?: string;
+  labelClassName?: string;
+  containerClassName?: string;
+  className?: string;
+  dropdownClassName?: string;
+  errorMessage?: string;
+  options?: SearchableSelectOption[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  value?: string | number;
+  defaultValue?: string | number;
+  onValueChange?: (
+    value: string | number | undefined,
+    option?: SearchableSelectOption,
+  ) => void;
+  onOpenChange?: (open: boolean) => void;
+  onSearchChange?: (value: string) => void;
+  searchValue?: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+  canLoadMore?: boolean;
+  onLoadMore?: () => void;
+  loadMoreSkeletonCount?: number;
+  loadMoreRootMargin?: string;
+  allowCustomValue?: boolean;
+  name?: string;
+  id?: string;
+  style?: React.CSSProperties;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  prefixIcon?: React.ReactNode;
+  suffixIcon?: React.ReactNode;
+  onApplyCustomValue?: () => void;
 }
 interface ActionDropdownProps {
   options: DropdownOption[];

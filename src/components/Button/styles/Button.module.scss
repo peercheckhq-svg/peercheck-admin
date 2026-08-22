@@ -66,3 +66,33 @@
     font-size: 1rem;
   }
 }
+
+.tertiary {
+  background-color: transparent;
+  color: #525866;
+  border: 0.1rem solid #e2e4e9;
+  box-shadow: 0px 1px 2px 0px #5258660f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  width: fit-content;
+  white-space: nowrap;
+  font-weight: 500;
+
+  &:hover {
+    filter: brightness(0.8);
+  }
+
+  &.small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  &.medium {
+    padding: 0.7rem;
+    font-size: 1rem;
+  }
+}

@@ -2,9 +2,17 @@
 import SearchIcon from "@/icons/SearchIcon";
 import styles from "./styles/Input.module.css";
 
-function SearchInput({ placeholder, onChange, shrink }: SearchInputProps) {
+function SearchInput({
+  placeholder,
+  onChange,
+  shrink,
+  overrideStyles,
+}: SearchInputProps) {
   return (
-    <div className={`${styles.search_input} ${shrink ? styles.shrink : ""}`}>
+    <div
+      className={`${styles.search_input} ${shrink ? styles.shrink : ""}`}
+      style={overrideStyles}
+    >
       <SearchIcon />
       <input
         type="search"
