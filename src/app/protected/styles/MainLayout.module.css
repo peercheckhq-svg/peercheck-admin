@@ -28,6 +28,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-width: 0;
 }
 @media screen and (max-width: 768px) {
   .admin_layout .main_content {
@@ -36,6 +37,21 @@
 }
 .admin_layout .main_content .content_area {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   padding: 1rem;
   overflow-y: auto;
-}/*# sourceMappingURL=MainLayout.module.css.map */
+}
+
+@media (min-width: 1101px) {
+  .admin_layout:has([data-review-proof="open"]) {
+    grid-template-columns: 5rem minmax(0, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .admin_layout:has([data-review-area]),
+  .admin_layout:has([data-review-area]) .main_content {
+    height: 100dvh;
+  }
+}
+/*# sourceMappingURL=MainLayout.module.css.map */

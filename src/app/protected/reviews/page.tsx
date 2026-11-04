@@ -1,655 +1,76 @@
 "use client";
+
+import { Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import useFetch from "@/hooks/useFetch";
+import { API_ROUTES } from "@/routes/apiRoutes";
+import MetricCard from "@/components/Cards/MetricCard";
 import DynamicTable from "@/components/Tables/DynamicTable";
 import MobileTable from "@/components/Tables/MobileTable";
-import styles from "./styles/Reviews.module.css";
-import useFetch from "@/hooks/useFetch";
-import usePost from "@/hooks/usePost";
-import { API_ROUTES } from "@/routes/apiRoutes";
-import { useState, useEffect } from "react";
-import Loader from "@/components/Loader/Loader";
-import SearchInput from "@/components/Input/SearchInput";
-import Button from "@/components/Button/Button";
-import Modal from "@/components/Modal/Modal";
-import { useWindow } from "@/hooks/useWindow";
+import CompanyIdentity from "./components/CompanyIdentity";
+import { dateLabel, parseVerificationList, proofLabel, queueParams, relationship, relativeDate, verificationLabels } from "./components/verificationUtils";
+import styles from "./styles/Verification.module.css";
 
-type StatusTab =
-  | "pending_verification"
-  | "submitted"
-  | "verification_rejected"
-  | "unpublished"
-  | "reported";
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  pending_verification: "Pending verification",
-  verification_rejected: "Rejected",
-  submitted: "Published",
-  unpublished: "Unpublished",
-};
-
-function Reviews() {
-  const { width } = useWindow();
-  const [activeTab, setActiveTab] = useState<StatusTab>("pending_verification");
-  const [queryParams, setQueryParams] = useState<Record<string, string>>({
-    status: "pending_verification",
-    search: "",
-    page: "1",
-    per_page: "10",
-  });
-  const [searchValue, setSearchValue] = useState("");
-  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
-  const [actionMode, setActionMode] = useState<"reject" | "delete" | null>(null);
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      setQueryParams((prev) => ({ ...prev, search: searchValue, page: "1" }));
-    }, 500);
-
-    return () => clearTimeout(debounceTimer);
-  }, [searchValue]);
-
-  const handleTabChange = (tab: StatusTab) => {
-    setActiveTab(tab);
-    setActionMode(null);
-    setReason("");
-    setQueryParams((prev) => ({
-      ...prev,
-      page: "1",
-      status: tab === "reported" ? "" : tab,
-      reported: tab === "reported" ? "1" : "",
-    }));
+function VerificationOverview() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const params = queueParams(searchParams);
+  const { data, isLoading, isIdle, error, refetch } = useFetch<VerificationListResponse>(API_ROUTES.VERIFICATIONS(params), { parser: parseVerificationList });
+  const loading = isLoading || isIdle;
+  const update = (changes: Record<string, string>) => {
+    const next = new URLSearchParams({ ...params, ...changes });
+    router.replace(`/protected/reviews?${next}`, { scroll: false });
   };
-
-  const {
-    data: listResponse,
-    isLoading: isListLoading,
-    refetch: refetchList,
-  } = useFetch<AdminReviewsListResponse>(API_ROUTES.REVIEWS(queryParams), {
-    onError: (error) => {
-      console.error("Admin reviews error:", error);
-    },
-  });
-
-  const {
-    data: detailResponse,
-    isLoading: isDetailLoading,
-    refetch: refetchDetail,
-  } = useFetch<AdminReviewDetailResponse>(
-    selectedReviewId ? API_ROUTES.REVIEW_DETAIL(selectedReviewId) : null,
-  );
-
-  const refreshAfterAction = async () => {
-    await Promise.all([refetchList(), refetchDetail()]);
-  };
-
-  const closeDetail = () => {
-    setSelectedReviewId(null);
-    setActionMode(null);
-    setReason("");
-  };
-
-  const onMutationSuccess = async () => {
-    setActionMode(null);
-    setReason("");
-    await refreshAfterAction();
-  };
-
-  const approveMut = usePost<ApiSuccessResponse<AdminReviewDetail>, unknown>(
-    selectedReviewId ? API_ROUTES.REVIEW_APPROVE(selectedReviewId) : "",
-    {
-      method: "PATCH",
-      onSuccess: onMutationSuccess,
-      onError: (error) => console.error("Approve failed:", error),
-    },
-  );
-
-  const rejectMut = usePost<
-    ApiSuccessResponse<AdminReviewDetail>,
-    { reason: string }
-  >(selectedReviewId ? API_ROUTES.REVIEW_REJECT(selectedReviewId) : "", {
-    method: "PATCH",
-    onSuccess: onMutationSuccess,
-    onError: (error) => console.error("Reject failed:", error),
-  });
-
-  const unpublishMut = usePost<ApiSuccessResponse<AdminReviewDetail>, unknown>(
-    selectedReviewId ? API_ROUTES.REVIEW_UNPUBLISH(selectedReviewId) : "",
-    {
-      method: "PATCH",
-      onSuccess: onMutationSuccess,
-      onError: (error) => console.error("Unpublish failed:", error),
-    },
-  );
-
-  const deleteMut = usePost<
-    ApiSuccessResponse<unknown>,
-    { reason: string }
-  >(selectedReviewId ? API_ROUTES.REVIEW_DELETE(selectedReviewId) : "", {
-    method: "DELETE",
-    onSuccess: () => {
-      setActionMode(null);
-      setReason("");
-      setSelectedReviewId(null);
-      refetchList();
-    },
-    onError: (error) => console.error("Delete failed:", error),
-  });
-
-  const restoreMut = usePost<ApiSuccessResponse<AdminReviewDetail>, unknown>(
-    selectedReviewId ? API_ROUTES.REVIEW_RESTORE(selectedReviewId) : "",
-    {
-      method: "PATCH",
-      onSuccess: onMutationSuccess,
-      onError: (error) => console.error("Restore failed:", error),
-    },
-  );
-
-  const reviews = listResponse?.data?.data ?? [];
-  const counts = listResponse?.counts;
-  const detail = detailResponse?.data ?? null;
-  const activeMutation =
-    approveMut.isLoading ||
-    rejectMut.isLoading ||
-    unpublishMut.isLoading ||
-    deleteMut.isLoading ||
-    restoreMut.isLoading;
-
-  const tabs: Array<{ key: StatusTab; label: string; count?: number }> = [
-    {
-      key: "pending_verification",
-      label: "Pending verification",
-      count: counts?.pending_verification,
-    },
-    { key: "submitted", label: "Published", count: counts?.submitted },
-    {
-      key: "verification_rejected",
-      label: "Rejected",
-      count: counts?.verification_rejected,
-    },
-    { key: "unpublished", label: "Unpublished", count: counts?.unpublished },
-    { key: "reported", label: "Reported", count: counts?.reported },
-  ];
-
-  const formatDate = (ts: number | null | undefined) =>
-    ts
-      ? new Date(ts * 1000).toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })
-      : "—";
-
-  const canApprove = Boolean(
-    detail &&
-      !detail.deleted &&
-      ["pending_verification", "verification_rejected", "unpublished"].includes(
-        detail.status,
-      ),
-  );
-  const canReject = Boolean(
-    detail &&
-      !detail.deleted &&
-      ["pending_verification", "verification_rejected"].includes(detail.status),
-  );
-  const canUnpublish = Boolean(detail && !detail.deleted && detail.status === "submitted");
-  const canDelete = Boolean(detail && !detail.deleted);
-  const canRestore = Boolean(detail && detail.deleted);
-
-  const isReasonMissing =
-    (actionMode === "reject" || actionMode === "delete") && reason.trim() === "";
-
-  const confirmReasonAction = async () => {
-    if (!selectedReviewId || isReasonMissing) return;
-    if (actionMode === "reject") {
-      await rejectMut.mutate({ reason: reason.trim() });
-    } else if (actionMode === "delete") {
-      await deleteMut.mutate({ reason: reason.trim() });
-    }
-  };
-
+  const caseHref = (id: string) => `/protected/reviews/${id}?${new URLSearchParams(params)}`;
   const columns: TableColumn[] = [
-    {
-      key: "company",
-      label: "Company",
-      render: (review: AdminReviewListItem) => (
-        <div className={styles.companyCell}>
-          <div className={styles.initials}>
-            {(review.company?.name ?? "?").charAt(0).toUpperCase()}
-          </div>
-          <span>{review.company?.name ?? "Unknown company"}</span>
-        </div>
-      ),
-    },
-    {
-      key: "title",
-      label: "Title",
-      render: (review: AdminReviewListItem) => review.title || "—",
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (review: AdminReviewListItem) => (
-        <span className={`${styles.statusBadge} ${styles[review.status]}`}>
-          {review.deleted ? "Deleted · " : ""}
-          {STATUS_LABELS[review.status] ?? review.status}
-        </span>
-      ),
-    },
-    {
-      key: "pendingReports",
-      label: "Reports",
-      render: (review: AdminReviewListItem) =>
-        review.pendingReports > 0 ? (
-          <span className={styles.reportFlag}>{review.pendingReports}</span>
-        ) : (
-          "0"
-        ),
-    },
-    {
-      key: "verification",
-      label: "Verification",
-      render: (review: AdminReviewListItem) =>
-        review.verificationType
-          ? `${review.verificationType} · ${review.verificationStatus ?? "n/a"}`
-          : "—",
-    },
-    {
-      key: "createdAt",
-      label: "Created",
-      render: (review: AdminReviewListItem) => formatDate(review.createdAt),
-    },
-    {
-      key: "actions",
-      label: "",
-      render: (review: AdminReviewListItem) => (
-        <button
-          type="button"
-          className={styles.linkButton}
-          onClick={() => {
-            setSelectedReviewId(review.id);
-            setActionMode(null);
-            setReason("");
-          }}
-        >
-          View
-        </button>
-      ),
-    },
+    { key: "company", label: "Company", render: (item: VerificationCase) => <CompanyIdentity company={item.review.company} /> },
+    { key: "id", label: "Case ID", render: (item: VerificationCase) => <Link className={styles.caseId} href={caseHref(item.id)} title={item.id}>{item.id}</Link> },
+    { key: "claim", label: "Employment claim", render: (item: VerificationCase) => <div>{item.review.jobTitle ?? "Job title not provided"}<span className={styles.secondary}>{relationship(item.review.currentEmployee)}</span></div> },
+    { key: "proof", label: "Proof", render: (item: VerificationCase) => <div>{proofLabel(item.type)}<span className={styles.secondary}>{item.documents[0]?.mime_type === "application/pdf" ? "PDF" : item.documents[0]?.mime_type.startsWith("image/") ? "Image" : "Profile link"}</span></div> },
+    { key: "submitted", label: "Submitted", render: (item: VerificationCase) => <div>{dateLabel(item.review.submittedAt ?? item.createdAt)}<span className={styles.secondary}>{relativeDate(item.review.submittedAt ?? item.createdAt)}</span></div> },
+    { key: "actions", label: "", render: (item: VerificationCase) => <Link className={styles.textLink} href={caseHref(item.id)} aria-label={`Review ${item.review.company?.name ?? "company"} case`}>Review →</Link> },
   ];
-
-  const skeletonRows = Array.from({ length: 10 }).map((_, index) => ({
-    id: `skeleton-${index}`,
-    title: "",
-    status: "draft",
-    deleted: false,
-    company: null,
-    authorType: "guest",
-    hasSalaryReview: false,
-    verificationType: null,
-    verificationStatus: null,
-    pendingReports: 0,
-    submittedAt: null,
-    publishedAt: null,
-    createdAt: null,
-  })) as unknown as AdminReviewListItem[];
+  const counts = data?.counts;
+  const metrics = [
+    ["Total Reviews", counts ? counts.pending + counts.verified + counts.rejected : "—"],
+    ["Pending", counts?.pending ?? "—"], ["Approved", counts?.verified ?? "—"], ["Rejected", counts?.rejected ?? "—"],
+  ] as const;
 
   return (
-    <div className={styles.reviews}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>Reviews</h3>
-        <SearchInput
-          onChange={(value) => setSearchValue(value)}
-          overrideStyles={width < 600 ? { width: "100%" } : undefined}
-        />
+    <div className={styles.page} data-review-area>
+      <header className={styles.pageHeader}>
+        <div><h1>Review Verification</h1><p>Review employment evidence before workplace reviews are published.</p></div>
+        <Link className={styles.outlineLink} href="/protected/reviews/manage">Manage all reviews</Link>
+      </header>
+      <div className={styles.metrics}>{metrics.map(([title, value]) => <MetricCard key={title} title={title} value={value} icon={null} type={null} isLoading={loading} />)}</div>
+      <div className={styles.toolbar}>
+        <nav className={styles.tabs} aria-label="Verification status">
+          {(Object.keys(verificationLabels) as VerificationStatus[]).map(status => <button key={status} type="button" aria-current={params.status === status ? "page" : undefined} className={params.status === status ? styles.activeTab : ""} onClick={() => update({ status, page: "1" })}>{verificationLabels[status]}</button>)}
+        </nav>
+        <form className={styles.filters} onSubmit={event => { event.preventDefault(); const fields = new FormData(event.currentTarget); update({ search: String(fields.get("search") ?? ""), page: "1" }); }}>
+          <label className={styles.srOnly} htmlFor="verification-type">Proof queue</label>
+          <select id="verification-type" value={params.type} onChange={event => update({ type: event.target.value, page: "1" })}><option value="documents">Document proofs</option><option value="linkedin">LinkedIn proofs</option></select>
+          <label className={styles.srOnly} htmlFor="verification-search">Search company or review</label>
+          <input key={params.search} id="verification-search" name="search" defaultValue={params.search} maxLength={255} placeholder="Search company or review" type="search" />
+          <button type="submit" className={styles.outlineLink}>Search</button>
+        </form>
       </div>
-
-      <div className={styles.tabs}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ""}`}
-            onClick={() => handleTabChange(tab.key)}
-          >
-            {tab.label}
-            {typeof tab.count === "number" && (
-              <span className={styles.badge}>{tab.count}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {width <= 768 ? (
-        <MobileTable
-          headerTitle="Review"
-          showCheckbox={false}
-          emptyTitle="No reviews found"
-          emptyMessage="Reviews will appear here once submitted."
-          itemsPerPage={listResponse?.data?.per_page ?? 10}
-          data={(isListLoading ? [] : reviews).map((review) => ({
-            id: review.id,
-            content: (
-              <div className={styles.companyCell}>
-                <div className={styles.initials}>
-                  {(review.company?.name ?? "?").charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 500 }}>
-                    {review.company?.name ?? "Unknown company"}
-                  </p>
-                  <span className={`${styles.statusBadge} ${styles[review.status]}`}>
-                    {STATUS_LABELS[review.status] ?? review.status}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  onClick={() => {
-                    setSelectedReviewId(review.id);
-                    setActionMode(null);
-                    setReason("");
-                  }}
-                >
-                  View
-                </button>
-              </div>
-            ),
-          }))}
-        />
-      ) : (
-        <DynamicTable
-          columns={columns}
-          data={isListLoading ? skeletonRows : reviews}
-          serverPagination
-          currentPage={listResponse?.data?.current_page ?? 1}
-          perPage={listResponse?.data?.per_page ?? 10}
-          totalPages={listResponse?.data?.last_page ?? 1}
-          totalItems={listResponse?.data?.total}
-          onPageChange={(nextPage) =>
-            setQueryParams((prev) => ({ ...prev, page: String(nextPage) }))
-          }
-          onPerPageChange={(nextPerPage) =>
-            setQueryParams((prev) => ({
-              ...prev,
-              page: "1",
-              per_page: String(nextPerPage),
-            }))
-          }
-          emptyMessage="No reviews found"
-        />
-      )}
-
-      <Modal
-        isOpen={Boolean(selectedReviewId)}
-        onClose={closeDetail}
-        header={<h2>Review details</h2>}
-        contentClassName={styles.modalContent}
-      >
-        {isDetailLoading || !detail ? (
-          <Loader variant="spinner" size="md" />
-        ) : (
-          <div className={styles.detail}>
-            <div className={styles.actionBar}>
-              {canApprove && (
-                <Button
-                  variant="primary"
-                  disabled={activeMutation}
-                  onClick={() => approveMut.mutate({})}
-                >
-                  {approveMut.isLoading ? "Publishing..." : "Approve & publish"}
-                </Button>
-              )}
-              {canUnpublish && (
-                <Button
-                  variant="secondary"
-                  disabled={activeMutation}
-                  onClick={() => unpublishMut.mutate({})}
-                >
-                  {unpublishMut.isLoading ? "Unpublishing..." : "Unpublish"}
-                </Button>
-              )}
-              {canReject && (
-                <Button
-                  variant="tertiary"
-                  disabled={activeMutation}
-                  onClick={() =>
-                    setActionMode(actionMode === "reject" ? null : "reject")
-                  }
-                >
-                  Reject
-                </Button>
-              )}
-              {canDelete && (
-                <Button
-                  variant="tertiary"
-                  disabled={activeMutation}
-                  onClick={() =>
-                    setActionMode(actionMode === "delete" ? null : "delete")
-                  }
-                >
-                  Delete
-                </Button>
-              )}
-              {canRestore && (
-                <Button
-                  variant="primary"
-                  disabled={activeMutation}
-                  onClick={() => restoreMut.mutate({})}
-                >
-                  {restoreMut.isLoading ? "Restoring..." : "Restore"}
-                </Button>
-              )}
-            </div>
-
-            {(actionMode === "reject" || actionMode === "delete") && (
-              <div className={styles.reasonBox}>
-                <label className={styles.reasonLabel} htmlFor="moderation-reason">
-                  {actionMode === "reject" ? "Rejection reason" : "Deletion reason"}{" "}
-                  (required)
-                </label>
-                <textarea
-                  id="moderation-reason"
-                  className={styles.textarea}
-                  value={reason}
-                  maxLength={2000}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="Explain the moderation decision..."
-                />
-                {isReasonMissing && (
-                  <p className={styles.errorText}>A reason is required.</p>
-                )}
-                <div className={styles.actionsCell}>
-                  <Button
-                    variant="primary"
-                    disabled={activeMutation}
-                    onClick={confirmReasonAction}
-                  >
-                    Confirm {actionMode}
-                  </Button>
-                  <Button
-                    variant="tertiary"
-                    disabled={activeMutation}
-                    onClick={() => {
-                      setActionMode(null);
-                      setReason("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <section>
-              <h4 className={styles.sectionTitle}>Overview</h4>
-              <dl className={styles.contentGrid}>
-                <div className={styles.field}>
-                  <dt>Company</dt>
-                  <dd>{detail.company?.name ?? "—"}</dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Status</dt>
-                  <dd>{STATUS_LABELS[detail.status] ?? detail.status}</dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Author</dt>
-                  <dd>
-                    {detail.authorType === "registered"
-                      ? (detail.author?.email ?? "Registered user")
-                      : "Guest submission"}
-                  </dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Job title</dt>
-                  <dd>{detail.jobTitle || "—"}</dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Employment</dt>
-                  <dd>
-                    {[detail.employmentType, detail.workStyle]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Ratings</dt>
-                  <dd>
-                    {detail.ratings.length > 0
-                      ? detail.ratings
-                          .map((r) => `${r.category ?? "Overall"}: ${r.rating}/5`)
-                          .join(", ")
-                      : "—"}
-                  </dd>
-                </div>
-                {detail.salaryReview && (
-                  <div className={styles.field}>
-                    <dt>Salary data</dt>
-                    <dd>
-                      {detail.salaryReview.currency}{" "}
-                      {detail.salaryReview.base_salary ?? "—"} /{" "}
-                      {detail.salaryReview.salary_per ?? "—"}
-                    </dd>
-                  </div>
-                )}
-                <div className={styles.field}>
-                  <dt>Created</dt>
-                  <dd>{formatDate(detail.createdAt)}</dd>
-                </div>
-                <div className={styles.field}>
-                  <dt>Published</dt>
-                  <dd>{formatDate(detail.publishedAt)}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section>
-              <h4 className={styles.sectionTitle}>Content</h4>
-              <p className={styles.block}>{detail.title || "(no title)"}</p>
-              <p className={styles.block}>
-                <strong>Pros:</strong> {detail.pros || "—"}
-              </p>
-              <p className={styles.block}>
-                <strong>Cons:</strong> {detail.cons || "—"}
-              </p>
-              {detail.suggestions && (
-                <p className={styles.block}>
-                  <strong>Suggestions:</strong> {detail.suggestions}
-                </p>
-              )}
-            </section>
-
-            {detail.verification && (
-              <section>
-                <h4 className={styles.sectionTitle}>Verification</h4>
-                <dl className={styles.contentGrid}>
-                  <div className={styles.field}>
-                    <dt>Type / status</dt>
-                    <dd>
-                      {detail.verification.type} · {detail.verification.status}
-                    </dd>
-                  </div>
-                  {detail.verification.workEmail && (
-                    <div className={styles.field}>
-                      <dt>Work email</dt>
-                      <dd>{detail.verification.workEmail}</dd>
-                    </div>
-                  )}
-                  {detail.verification.linkedinUrl && (
-                    <div className={styles.field}>
-                      <dt>LinkedIn</dt>
-                      <dd>{detail.verification.linkedinUrl}</dd>
-                    </div>
-                  )}
-                  {detail.verification.rejectionReason && (
-                    <div className={styles.field}>
-                      <dt>Verification rejection</dt>
-                      <dd>{detail.verification.rejectionReason}</dd>
-                    </div>
-                  )}
-                </dl>
-                {detail.verification.documents.length > 0 && (
-                  <ul className={styles.list}>
-                    {detail.verification.documents.map((doc) => (
-                      <li key={doc.id}>
-                        {doc.original_name} ({Math.round(doc.size / 1024)} KB)
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {detail.reports.length > 0 && (
-              <section>
-                <h4 className={styles.sectionTitle}>
-                  Reports ({detail.pendingReports} pending)
-                </h4>
-                <ul className={styles.list}>
-                  {detail.reports.map((report) => (
-                    <li key={report.id}>
-                      [{report.status}] {report.reason} —{" "}
-                      {report.reporter?.email ?? "unknown reporter"}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {detail.moderationHistory.length > 0 && (
-              <section>
-                <h4 className={styles.sectionTitle}>Moderation history</h4>
-                <ul className={styles.historyList}>
-                  {detail.moderationHistory.map((entry, index) => (
-                    <li key={`${entry.action}-${index}`}>
-                      {entry.action} by admin #{entry.adminId ?? "unknown"} on{" "}
-                      {formatDate(entry.at)}
-                      {entry.reason ? ` — “${entry.reason}”` : ""}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {(rejectMut.error ||
-              approveMut.error ||
-              unpublishMut.error ||
-              deleteMut.error ||
-              restoreMut.error) && (
-              <p className={styles.errorText}>
-                {rejectMut.error?.message ??
-                  approveMut.error?.message ??
-                  unpublishMut.error?.message ??
-                  deleteMut.error?.message ??
-                  restoreMut.error?.message ??
-                  "Action failed."}
-              </p>
-            )}
+      {error ? <div className={styles.error} role="alert">{error.message} <button type="button" onClick={() => refetch()}>Try again</button></div> : (
+        <div className={styles.tableWrap} aria-busy={loading}>
+          <div className={styles.desktopTable}>
+          <DynamicTable columns={columns} data={data?.data.data ?? []} isLoading={loading} serverPagination currentPage={data?.data.current_page ?? Number(params.page)} perPage={data?.data.per_page ?? 10} totalPages={data?.data.last_page ?? 1} totalItems={data?.data.total} onPageChange={page => update({ page: String(page) })} onPerPageChange={perPage => update({ per_page: String(perPage), page: "1" })} emptyTitle="No verification cases found" emptyMessage="Try another status or search. Submitted proof will appear here." />
           </div>
-        )}
-      </Modal>
+          <div className={styles.mobileTable}>
+            <MobileTable headerTitle="Verification cases" data={(data?.data.data ?? []).map(item => ({ id: item.id, content: <div className={styles.mobileCase}><CompanyIdentity company={item.review.company} /><p>{item.review.jobTitle ?? "Job title not provided"} · {relationship(item.review.currentEmployee)}</p><p>{proofLabel(item.type)} · {dateLabel(item.review.submittedAt ?? item.createdAt)}</p><Link className={styles.textLink} href={caseHref(item.id)}>Review case →</Link></div> }))} isLoading={loading} serverPagination currentPage={data?.data.current_page ?? Number(params.page)} totalPages={data?.data.last_page ?? 1} onPageChange={page => update({ page: String(page) })} itemsPerPage={Number(params.per_page)} emptyTitle="No verification cases found" emptyMessage="Try another status or search." />
+          </div>
+        </div>
+      )}
+      <p className={styles.secondary}>Counts reflect the selected proof queue and search. Approved refers to employment verification.</p>
     </div>
   );
 }
 
-export default Reviews;
+export default function ReviewsPage() {
+  return <Suspense fallback={<p role="status">Loading verification queue…</p>}><VerificationOverview /></Suspense>;
+}

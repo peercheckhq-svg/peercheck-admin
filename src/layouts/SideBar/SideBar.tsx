@@ -13,7 +13,6 @@ import SupportIcon from "@/icons/SupportIcon";
 import SettingsIcon from "@/icons/SettingsIcon";
 import Image from "next/image";
 import styles from "./styles/SideBar.module.css";
-import { usePathname } from "next/navigation";
 import { useCustomNavigation } from "@/hooks/useCustomNavigation";
 
 function SideBar() {
@@ -62,9 +61,10 @@ function SideBar() {
           path: ROUTE_PATHS.ADMIN_INSTITUTIONS,
         },
         {
-          title: "Reviews",
+          title: "Review Verification",
           icon: <ReviewsIcon />,
           path: ROUTE_PATHS.ADMIN_REVIEWS,
+          children: [{ title: "Manage all reviews", path: `${ROUTE_PATHS.ADMIN_REVIEWS}/manage` }],
         },
         {
           title: "Team",

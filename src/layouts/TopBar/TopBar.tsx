@@ -6,7 +6,7 @@ import Image from "next/image";
 import styles from "./styles/TopBar.module.css";
 import { usePost } from "@/hooks/usePost";
 import { API_ROUTES } from "@/routes/apiRoutes";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { useAdmin } from "@/context/AdminContext";
 import { useState } from "react";
@@ -17,8 +17,9 @@ import { useWindow } from "@/hooks/useWindow";
 function TopBar() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const isReviewArea = usePathname().startsWith("/protected/reviews");
   const { clearAdmin } = useAdmin();
-  const { open: navOpen, toggleOpen } = useCustomNavigation();
+  const { toggleOpen } = useCustomNavigation();
   const { width } = useWindow();
 
   const logoutMutation = usePost<void, void>(API_ROUTES.LOGOUT_ADMIN, {
@@ -37,10 +38,10 @@ function TopBar() {
   return (
     <section className={styles.top_bar}>
       <div className={styles.top_bar_left}>
-        <button onClick={toggleOpen} className={styles.hamburger_btn}>
+        <button onClick={toggleOpen} className={styles.hamburger_btn} aria-label="Toggle navigation">
           <HamburgerIcon />
         </button>
-        <h1>Welcome Back, Alex</h1>
+        <h1>{isReviewArea ? "Review Verification" : "Welcome Back, Alex"}</h1>
       </div>
       <div className={styles.top_bar_right}>
         <SearchInput placeholder="Search" shrink={width <= 768} />
