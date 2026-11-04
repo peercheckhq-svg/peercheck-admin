@@ -18,7 +18,7 @@ function SideBarSection({
       <p className={styles.title}>{sectionTitle}</p>
       <ul>
         {items.map(({ title, path, icon, children }) => {
-          const isActive = currentPath === path;
+          const isActive = currentPath === path || (path === "/protected/reviews" && currentPath.startsWith(`${path}/`));
           const hasActiveChild = children?.some(
             (child) => currentPath === child.path,
           );
@@ -27,6 +27,8 @@ function SideBarSection({
             <li key={path}>
               <Link
                 href={path}
+                aria-label={title}
+                title={title}
                 onClick={
                   shouldShowChildren && width <= 768 ? toggleOpen : undefined
                 }

@@ -19,6 +19,19 @@ export const BACKEND_ROUTES = {
   LOGOUT_ADMIN: "/admin/auth/logout",
   COMPANIES: "/admin/companies",
   MERGE_COMPANIES: (sourceId: string) => `/admin/companies/${sourceId}/merge`,
+  REVIEWS: "/admin/reviews",
+  VERIFICATIONS: "/admin/review-verifications",
+  VERIFICATION_DETAIL: (id: string) => `/admin/review-verifications/${id}`,
+  VERIFICATION_ACTION: (id: string, action: "approve" | "reject") => `/admin/review-verifications/${id}/${action}`,
+  VERIFICATION_DOCUMENT: (id: string, documentId: string) => `/admin/review-verifications/${id}/documents/${documentId}`,
+  REVIEW_DETAIL: (id: string) => `/admin/reviews/${id}`,
+  REVIEW_APPROVE: (id: string) => `/admin/reviews/${id}/approve`,
+  REVIEW_REJECT: (id: string) => `/admin/reviews/${id}/reject`,
+  REVIEW_UNPUBLISH: (id: string) => `/admin/reviews/${id}/unpublish`,
+  REVIEW_RESTORE: (id: string) => `/admin/reviews/${id}/restore`,
+  REVIEW_REPORTS: "/admin/review-reports",
+  REVIEW_REPORT_RESOLVE: (reportId: string) =>
+    `/admin/review-reports/${reportId}/resolve`,
   UPDATE_SETTINGS: "/admin/api/settings/update",
 } as const;
 
@@ -46,5 +59,21 @@ export const API_ROUTES = {
     `/api/companies?${new URLSearchParams(queryParams).toString()}`,
   MERGE_COMPANIES: (sourceId: string) => `/api/companies/${sourceId}/merge`,
   SAMPLE_COMPANIES: "/api/companies",
+  REVIEWS: (queryParams: Record<string, string>) =>
+    `/api/reviews?${new URLSearchParams(queryParams).toString()}`,
+  REVIEW_DETAIL: (id: string) => `/api/reviews/${id}`,
+  VERIFICATIONS: (params: Record<string, string>) => `/api/review-verifications?${new URLSearchParams(params)}`,
+  VERIFICATION_DETAIL: (id: string, params: Record<string, string> = {}) => `/api/review-verifications/${id}?${new URLSearchParams(params)}`,
+  VERIFICATION_ACTION: (id: string, action: "approve" | "reject") => `/api/review-verifications/${id}/${action}`,
+  VERIFICATION_DOCUMENT: (id: string, documentId: string) => `/api/review-verifications/${id}/documents/${documentId}`,
+  REVIEW_APPROVE: (id: string) => `/api/reviews/${id}/approve`,
+  REVIEW_REJECT: (id: string) => `/api/reviews/${id}/reject`,
+  REVIEW_UNPUBLISH: (id: string) => `/api/reviews/${id}/unpublish`,
+  REVIEW_RESTORE: (id: string) => `/api/reviews/${id}/restore`,
+  REVIEW_DELETE: (id: string) => `/api/reviews/${id}`,
+  REVIEW_REPORTS: (queryParams: Record<string, string>) =>
+    `/api/review-reports?${new URLSearchParams(queryParams).toString()}`,
+  REVIEW_REPORT_RESOLVE: (reportId: string) =>
+    `/api/review-reports/${reportId}/resolve`,
   UPDATE_SETTINGS: "/api/settings/update",
 } as const;

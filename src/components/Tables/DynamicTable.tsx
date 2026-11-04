@@ -1,18 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { isValidElement, useMemo, useState } from "react";
 import styles from "./styles/Table.module.css";
 import TableHeaderIcon from "@/icons/TableHeaderIcon";
 import DropdownInput from "../Input/DropdownInput";
 
-interface TableColumn {
+interface TableColumn<TRow extends TableRow> {
   key: string;
   label?: string;
   sortable?: boolean;
   className?: string;
   headerClassName?: string;
   render?: (
-    row: any,
+    row: TRow,
     context: {
       selectedRows: Set<string>;
       toggleRowSelection: (id: string) => void;
@@ -20,19 +20,18 @@ interface TableColumn {
   ) => React.ReactNode;
   renderHeader?: (context: {
     selectedRows: Set<string>;
-    currentData: any[];
+    currentData: TRow[];
     toggleAllRows: () => void;
   }) => React.ReactNode;
 }
 
 interface TableRow {
   id: string;
-  [key: string]: any;
 }
 
-interface DynamicTableProps {
-  columns: TableColumn[];
-  data: TableRow[];
+interface DynamicTableProps<TRow extends TableRow> {
+  columns: TableColumn<TRow>[];
+  data: TRow[];
   itemsPerPage?: number;
   currentPage?: number;
   onPageChange?: (page: number) => void;
@@ -46,7 +45,7 @@ interface DynamicTableProps {
   emptyMessage?: string;
 }
 
-function DynamicTable({
+function DynamicTable<TRow extends TableRow>({
   columns,
   data,
   itemsPerPage = 7,
@@ -60,7 +59,7 @@ function DynamicTable({
   isLoading = false,
   emptyTitle = "No records yet",
   emptyMessage = "Data will appear here once available",
-}: DynamicTableProps) {
+}: DynamicTableProps<TRow>) {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
   const [internalPerPage, setInternalPerPage] = useState(itemsPerPage);
@@ -76,8 +75,8 @@ function DynamicTable({
     }
 
     return [...data].sort((leftRow, rightRow) => {
-      const leftValue = leftRow[sortColumn];
-      const rightValue = rightRow[sortColumn];
+      const leftValue: unknown = Reflect.get(leftRow, sortColumn);
+      const rightValue: unknown = Reflect.get(rightRow, sortColumn);
 
       if (leftValue == null && rightValue == null) {
         return 0;
@@ -146,7 +145,12 @@ function DynamicTable({
     }
 
     onPerPageChange?.(nextPerPage);
-    handlePageChange(1);
+    if (serverPagination && onPerPageChange) {
+      // The server callback owns the page + page-size update as one operation.
+      if (controlledCurrentPage === undefined) setInternalCurrentPage(1);
+    } else {
+      handlePageChange(1);
+    }
   };
 
   const toggleRowSelection = (id: string) => {
@@ -332,7 +336,7 @@ function DynamicTable({
                   <td key={column.key} className={column.className}>
                     {column.render
                       ? column.render(row, { selectedRows, toggleRowSelection })
-                      : row[column.key]}
+                       : renderCell(Reflect.get(row, column.key))}
                   </td>
                 ))}
               </tr>
@@ -393,3 +397,9 @@ function DynamicTable({
 }
 
 export default DynamicTable;
+
+function renderCell(value: unknown): React.ReactNode {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || isValidElement(value)) return value;
+  if (Array.isArray(value)) return value.map(renderCell);
+  return value == null ? null : String(value);
+}

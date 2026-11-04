@@ -106,4 +106,21 @@
   display: block;
   width: 7rem;
   height: 2rem;
-}/*# sourceMappingURL=SideBar.module.css.map */
+}
+
+@media (min-width: 1101px) {
+  :global(main:has([data-review-proof="open"])) .side_bar_section :is(.title, .child_list),
+  :global(main:has([data-review-proof="open"])) .side_bar_section a > svg,
+  :global(main:has([data-review-proof="open"])) .side_bar_section a div span {
+    display: none;
+  }
+  :global(main:has([data-review-proof="open"])) .side_bar_section a {
+    justify-content: center;
+    padding: 1rem 0;
+  }
+  :global(main:has([data-review-proof="open"])) .logo_container img {
+    width: 3rem;
+    height: auto;
+  }
+}
+/*# sourceMappingURL=SideBar.module.css.map */

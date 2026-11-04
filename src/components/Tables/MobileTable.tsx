@@ -17,6 +17,10 @@ interface MobileTableProps {
   isLoading?: boolean;
   emptyTitle?: string;
   emptyMessage?: string;
+  serverPagination?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 function MobileTable({
@@ -27,14 +31,24 @@ function MobileTable({
   isLoading = false,
   emptyTitle = "No records yet",
   emptyMessage = "Data will appear here once available",
+  serverPagination = false,
+  currentPage: controlledPage,
+  totalPages: controlledTotalPages,
+  onPageChange,
 }: MobileTableProps) {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
+  const [internalPage, setInternalPage] = useState(1);
 
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.max(1, controlledTotalPages ?? Math.ceil(data.length / itemsPerPage));
+  const currentPage = Math.min(Math.max(1, controlledPage ?? internalPage), totalPages);
+  const setCurrentPage = (page: number) => {
+    const next = Math.min(Math.max(1, page), totalPages);
+    if (controlledPage === undefined) setInternalPage(next);
+    onPageChange?.(next);
+  };
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentData = data.slice(startIndex, endIndex);
+  const currentData = serverPagination ? data : data.slice(startIndex, endIndex);
 
   const toggleRowSelection = (id: string) => {
     const newSelected = new Set(selectedRows);

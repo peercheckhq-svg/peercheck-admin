@@ -8,8 +8,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${generalSans.variable} ${tanker.variable}`}>
+      <div className={`${generalSans.variable} ${tanker.variable}`}>
         <LanguageProvider>
           <main className={styles.admin_layout}>
             <div className={styles.side_nav_area}>
@@ -21,8 +20,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
         </LanguageProvider>
-      </body>
-    </html>
+      </div>
   );
 }
 

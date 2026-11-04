@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import styles from "./styles/Modal.module.css";
 
 type ModalProps = {
@@ -14,6 +14,7 @@ type ModalProps = {
   className?: string;
   contentClassName?: string;
   hideCloseButton?: boolean;
+  ariaLabel?: string;
 };
 
 function Modal({
@@ -27,7 +28,27 @@ function Modal({
   className = "",
   contentClassName = "",
   hideCloseButton = false,
+  ariaLabel = "Dialog",
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const selector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]';
+    (dialog?.querySelector<HTMLElement>(selector) ?? dialog)?.focus({ preventScroll: true });
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !dialog) return;
+      const elements = Array.from(dialog.querySelectorAll<HTMLElement>(selector)).filter(element => element.getClientRects().length > 0);
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (!first) { event.preventDefault(); dialog.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => { document.removeEventListener("keydown", trapFocus); previousFocus?.focus({ preventScroll: true }); };
+  }, [isOpen]);
   useEffect(() => {
     if (!isOpen || !closeOnEscape) {
       return;
@@ -60,6 +81,9 @@ function Modal({
         className={`${styles.modal} ${contentClassName}`.trim()}
         role="dialog"
         aria-modal="true"
+        aria-label={ariaLabel}
+        ref={dialogRef}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         {(header || !hideCloseButton) && (
